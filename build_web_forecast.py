@@ -13,16 +13,98 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   <title>Прогноз ЧГК • Симулятор результата команды</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    body { background-color: #0f172a; color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; }
+    body { background-color: #0f172a; color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; overflow-x: hidden; }
     .card { background-color: #1e293b; border: 1px solid #334155; border-radius: 1rem; }
     ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-track { background: #0f172a; }
     ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+
+    @keyframes owl-peek {
+      0% { transform: translate(100%, 100%) rotate(15deg); }
+      15% { transform: translate(10px, 10px) rotate(-5deg); }
+      20% { transform: translate(0, 0) rotate(0deg); }
+      80% { transform: translate(0, 0) rotate(0deg); }
+      85% { transform: translate(10px, 10px) rotate(-5deg); }
+      100% { transform: translate(100%, 100%) rotate(15deg); }
+    }
+
+    @keyframes bubble-fade {
+      0% { opacity: 0; transform: scale(0.8) translateY(10px); }
+      10% { opacity: 1; transform: scale(1) translateY(0); }
+      90% { opacity: 1; transform: scale(1) translateY(0); }
+      100% { opacity: 0; transform: scale(0.8) translateY(10px); }
+    }
+
+    .owl-container {
+      position: fixed;
+      bottom: -20px;
+      right: -20px;
+      z-index: 100;
+      cursor: pointer;
+      transform: translate(100%, 100%) rotate(15deg);
+      transition: transform 0.5s ease;
+      user-select: none;
+    }
+
+    .owl-container.active {
+      animation: owl-peek 8s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+    }
+
+    .owl-container.clicked {
+      transform: translate(0, 0) rotate(0deg) !important;
+      animation: none !important;
+    }
+
+    .speech-bubble {
+      position: absolute;
+      bottom: 120px;
+      right: 40px;
+      background-color: #f1f5f9;
+      color: #0f172a;
+      padding: 10px 14px;
+      border-radius: 14px;
+      font-size: 13px;
+      font-weight: 600;
+      width: 180px;
+      box-shadow: 0 10px 25px -5px rgba(0,0,0,0.5), 0 8px 10px -6px rgba(0,0,0,0.5);
+      border: 2px solid #6366f1;
+      opacity: 0;
+      pointer-events: none;
+      transform-origin: bottom right;
+    }
+
+    .speech-bubble::after {
+      content: '';
+      position: absolute;
+      bottom: -10px;
+      right: 40px;
+      border-width: 10px 10px 0;
+      border-style: solid;
+      border-color: #f1f5f9 transparent;
+      display: block;
+      width: 0;
+    }
+
+    .speech-bubble::before {
+      content: '';
+      position: absolute;
+      bottom: -13px;
+      right: 39px;
+      border-width: 11px 11px 0;
+      border-style: solid;
+      border-color: #6366f1 transparent;
+      display: block;
+      width: 0;
+      z-index: -1;
+    }
+
+    .speech-bubble.show {
+      animation: bubble-fade 4.5s ease forwards;
+    }
   </style>
 </head>
 <body class="min-h-screen p-3 sm:p-6 flex flex-col items-center">
   <div class="w-full max-w-5xl space-y-4">
-    <!-- Шапка -->
     <div class="card p-4 sm:p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
       <div>
         <div class="flex items-center gap-2.5 flex-wrap">
@@ -45,11 +127,8 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       </div>
     </div>
 
-    <!-- Основной блок прогноза -->
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5">
-      <!-- Левая колонка: Настройки -->
       <div class="lg:col-span-6 space-y-4">
-        <!-- 1. Игроки -->
         <div class="card p-4 space-y-3">
           <div class="flex justify-between items-center">
             <span class="text-xs font-semibold text-slate-200 uppercase tracking-wider">1. Игроки за столом (<span id="simSelectedCount">0</span> / 6)</span>
@@ -58,7 +137,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
           <div id="simulatorPlayerPool" class="flex flex-wrap gap-1.5 sm:gap-2 max-h-52 overflow-y-auto pr-1"></div>
         </div>
 
-        <!-- 2. Сложность и 3. Дистанция -->
         <div class="card p-4 space-y-4">
           <div class="space-y-2">
             <div class="flex justify-between text-xs">
@@ -91,7 +169,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         </div>
       </div>
 
-      <!-- Правая колонка: Результат прогноза -->
       <div class="lg:col-span-6">
         <div class="card p-5 border-2 border-indigo-500/40 bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950/30 flex flex-col justify-between space-y-5 lg:sticky lg:top-6">
           <div class="space-y-4">
@@ -100,7 +177,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
               <div id="simMatchedGamesText" class="text-[11px] text-slate-400">—</div>
             </div>
 
-            <!-- 3 сценария -->
             <div class="grid grid-cols-3 gap-2.5 sm:gap-3">
               <div class="rounded-xl bg-amber-500/10 border border-amber-500/30 p-3 sm:p-4 text-center">
                 <div class="text-[11px] font-semibold uppercase tracking-wide text-amber-300">Низкий</div>
@@ -125,7 +201,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
             </div>
           </div>
 
-          <!-- Детали поправок -->
           <div class="space-y-2.5 pt-4 border-t border-slate-700/80 text-xs">
             <div class="flex justify-between items-start gap-3">
               <span class="text-slate-400 shrink-0">Состав:</span>
@@ -145,6 +220,37 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     </div>
   </div>
 
+  <div id="speechBubble" class="speech-bubble">А кто-нибудь помнит форму вопроса?</div>
+  <div id="owlContainer" class="owl-container w-28 h-28 sm:w-32 sm:h-32" onclick="onOwlClick()">
+    <svg viewBox="0 0 140 140" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full drop-shadow-lg">
+      <path d="M30 115 C30 65, 110 65, 110 115 Z" fill="#1e293b" />
+      <path d="M40 95 C45 80, 95 80, 100 95" stroke="#0f172a" stroke-width="4" stroke-linecap="round" />
+      <path d="M55 90 L85 90 L70 110 Z" fill="#f8fafc" />
+      <path d="M62 92 L78 92 L70 97 Z" fill="#0f172a" />
+      <circle cx="60" cy="92" r="4" fill="#0f172a" />
+      <circle cx="80" cy="92" r="4" fill="#0f172a" />
+      <path d="M100 65 C108 55, 125 65, 115 80 C110 85, 105 85, 102 75 Z" fill="#92400e" stroke="#78350f" stroke-width="2" />
+      <path d="M112 58 C115 54, 120 56, 118 60" stroke="#78350f" stroke-width="2" stroke-linecap="round" />
+      <path d="M116 62 C120 59, 124 62, 121 66" stroke="#78350f" stroke-width="2" stroke-linecap="round" />
+      <circle cx="70" cy="55" r="35" fill="#b45309" stroke="#78350f" stroke-width="3" />
+      <path d="M35 32 C45 20, 58 28, 55 35" stroke="#78350f" stroke-width="4" stroke-linecap="round" fill="#78350f" />
+      <path d="M105 32 C95 20, 82 28, 85 35" stroke="#78350f" stroke-width="4" stroke-linecap="round" fill="#78350f" />
+      <path d="M62 32 L70 38 L78 32" stroke="#78350f" stroke-width="2" stroke-linecap="round" />
+      <path d="M65 40 L70 45 L75 40" stroke="#78350f" stroke-width="2" stroke-linecap="round" />
+      <circle cx="53" cy="52" r="14" fill="#fef08a" stroke="#ca8a04" stroke-width="2" />
+      <circle id="owlPupilL" cx="54" cy="52" r="5" fill="#0f172a" />
+      <circle cx="52" cy="50" r="1.5" fill="#ffffff" />
+      <circle cx="87" cy="52" r="14" fill="#fef08a" stroke="#ca8a04" stroke-width="2" />
+      <circle id="owlPupilR" cx="86" cy="52" r="5" fill="#0f172a" />
+      <circle cx="84" cy="50" r="1.5" fill="#ffffff" />
+      <circle cx="53" cy="52" r="16" stroke="#1e293b" stroke-width="3" fill="none" />
+      <circle cx="87" cy="52" r="16" stroke="#1e293b" stroke-width="3" fill="none" />
+      <path d="M69 52 L71 52" stroke="#1e293b" stroke-width="3" />
+      <path id="owlBeak" d="M66 54 L74 54 L70 65 Z" fill="#f59e0b" stroke="#d97706" stroke-width="1.5" />
+      <path d="M85 88 C85 95, 93 95, 90 88" stroke="#d97706" stroke-width="3" stroke-linecap="round" />
+    </svg>
+  </div>
+
   <script>
     const EMBEDDED_DATA = __EMBEDDED_DATA__;
     const DISTANCES = [36, 45, 48, 60, 72, 75, 81, 90];
@@ -162,6 +268,18 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     let simSelectedEditors = new Set();
     let simOtherEditorsCount = 0;
 
+    const owlPhrases = [
+      { text: "Я в сМЯКении!", mood: "shock" },
+      { text: "Где мой сидр?", mood: "angry" },
+      { text: "Зачем я это записал?", mood: "confused" },
+      { text: "Сейчас трезвый дядя всё расскажет", mood: "tired" },
+      { text: "А кто-нибудь помнит форму вопроса?", mood: "question" }
+    ];
+
+    let owlTimer = null;
+    let owlHideTimer = null;
+    let isOwlActive = false;
+
     function formatShortName(fullName) {
       const parts = (fullName || "").trim().split(/\s+/).filter(Boolean);
       if (parts.length === 0) return "";
@@ -177,6 +295,89 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     function setHtml(id, val) {
       const el = document.getElementById(id);
       if (el) el.innerHTML = val;
+    }
+
+    function triggerOwlPeek() {
+      if (isOwlActive) return;
+      const owl = document.getElementById("owlContainer");
+      if (!owl) return;
+
+      isOwlActive = true;
+      owl.className = "owl-container w-28 h-28 sm:w-32 sm:h-32 active";
+      setOwlMood("normal");
+
+      owlTimer = setTimeout(() => {
+        if (owl.classList.contains("active") && !owl.classList.contains("clicked")) {
+          owl.className = "owl-container w-28 h-28 sm:w-32 sm:h-32";
+          isOwlActive = false;
+        }
+      }, 8000);
+    }
+
+    function onOwlClick() {
+      const owl = document.getElementById("owlContainer");
+      const bubble = document.getElementById("speechBubble");
+      if (!owl || !bubble) return;
+
+      clearTimeout(owlTimer);
+      clearTimeout(owlHideTimer);
+
+      owl.className = "owl-container w-28 h-28 sm:w-32 sm:h-32 clicked";
+
+      const rand = owlPhrases[Math.floor(Math.random() * owlPhrases.length)];
+      bubble.textContent = rand.text;
+      setOwlMood(rand.mood);
+
+      bubble.classList.remove("show");
+      void bubble.offsetWidth;
+      bubble.classList.add("show");
+
+      owlHideTimer = setTimeout(() => {
+        owl.className = "owl-container w-28 h-28 sm:w-32 sm:h-32";
+        bubble.classList.remove("show");
+        isOwlActive = false;
+      }, 4500);
+    }
+
+    function setOwlMood(mood) {
+      const pupilL = document.getElementById("owlPupilL");
+      const pupilR = document.getElementById("owlPupilR");
+      const beak = document.getElementById("owlBeak");
+      if (!pupilL || !pupilR || !beak) return;
+
+      if (mood === "shock") {
+        pupilL.setAttribute("r", "2.5");
+        pupilR.setAttribute("r", "2.5");
+        pupilL.setAttribute("cx", "53");
+        pupilR.setAttribute("cx", "87");
+        beak.setAttribute("d", "M65 55 L75 55 L70 68 Z");
+      } else if (mood === "angry") {
+        pupilL.setAttribute("r", "4.5");
+        pupilR.setAttribute("r", "4.5");
+        pupilL.setAttribute("cx", "56");
+        pupilR.setAttribute("cx", "84");
+        beak.setAttribute("d", "M66 54 L74 54 L70 60 Z");
+      } else if (mood === "confused") {
+        pupilL.setAttribute("r", "4");
+        pupilR.setAttribute("r", "4");
+        pupilL.setAttribute("cx", "56");
+        pupilR.setAttribute("cx", "84");
+        beak.setAttribute("d", "M66 54 L74 54 L70 63 Z");
+      } else if (mood === "tired") {
+        pupilL.setAttribute("r", "3.5");
+        pupilR.setAttribute("r", "3.5");
+        pupilL.setAttribute("cy", "55");
+        pupilR.setAttribute("cy", "55");
+        beak.setAttribute("d", "M66 54 L74 54 L70 62 Z");
+      } else {
+        pupilL.setAttribute("r", "5");
+        pupilR.setAttribute("r", "5");
+        pupilL.setAttribute("cx", "54");
+        pupilR.setAttribute("cx", "86");
+        pupilL.setAttribute("cy", "52");
+        pupilR.setAttribute("cy", "52");
+        beak.setAttribute("d", "M66 54 L74 54 L70 65 Z");
+      }
     }
 
     function sigmoid(z) {
@@ -743,7 +944,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         });
       });
 
-      // Обучаем базовую IRT-модель на всей базе для расчёта значимых редакторов (от 5 игр)
       fitIRTModel(rawData.games, 18.0);
       const edMap = new Map();
       rawData.games.forEach(g => {
@@ -775,12 +975,17 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         .filter(p => p.totalGames >= 5)
         .sort((a, b) => b.totalGames - a.totalGames);
 
-      // По умолчанию подставляем 6 самых частых игроков, чтобы при открытии сразу были видны цифры
       allPlayersPoolForSim.slice(0, 6).forEach(p => simSelectedIds.add(p.id));
 
       renderDistanceButtons();
       renderSimEditorsUI();
       renderSimulatorUI();
+
+      setInterval(() => {
+        if (Math.random() > 0.4) triggerOwlPeek();
+      }, 10000);
+
+      setTimeout(triggerOwlPeek, 5000);
     }
 
     window.addEventListener("DOMContentLoaded", initApp);
@@ -797,7 +1002,6 @@ def main():
     with open(INPUT_JSON, "r", encoding="utf-8") as f:
         raw = json.load(f)
 
-    # Оставляем только нужные для прогноза поля (убираем маски и лишнее, чтобы страница грузилась мгновенно)
     slim_games = []
     for g in raw.get("games", []):
         editors = []
@@ -836,7 +1040,6 @@ def main():
         f.write(final_html)
 
     print(f"ГОТОВО! Создан автономный веб-файл '{OUTPUT_HTML}' ({len(final_html) // 1024} КБ).")
-    print("Теперь просто перетащи папку с 'index.html' на https://app.netlify.com/drop и получи ссылку для друзей!")
 
 if __name__ == "__main__":
     main()
