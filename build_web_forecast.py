@@ -39,9 +39,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       </div>
       <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
         <span id="modelSampleBadge" class="px-2.5 py-1 text-xs font-medium rounded-lg bg-slate-900 text-indigo-300 border border-slate-700">База: 0 игр</span>
-        <a href="https://github.com/ALukmanov/chgk-prognoz/actions/workflows/update.yml" target="_blank" rel="noopener noreferrer" title="Запустить обновление базы на GitHub" class="text-xs bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 px-3 py-1.5 rounded-lg transition flex items-center gap-1">
-          <span>🔄 Обновить рейтинг</span>
-        </a>
         <button type="button" onclick="clearAll()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-600 px-3 py-1.5 rounded-lg transition">
           Сбросить
         </button>
@@ -164,6 +161,13 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     let simEditorsAlphabetical = [];
     let simSelectedEditors = new Set();
     let simOtherEditorsCount = 0;
+
+    function formatShortName(fullName) {
+      const parts = (fullName || "").trim().split(/\s+/).filter(Boolean);
+      if (parts.length === 0) return "";
+      if (parts.length === 1) return parts[0];
+      return `${parts[0]} ${parts[1][0]}.`;
+    }
 
     function setText(id, val) {
       const el = document.getElementById(id);
@@ -555,7 +559,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       let poolHtml = candidates.map(p => {
         const active = simSelectedIds.has(p.id);
         const star = p.id === kaznacheevId ? "⭐ " : "";
-        const shortN = (p.name || "").split(" ")[0] || "";
+        const shortN = formatShortName(p.name);
         return `<button type="button" onclick="toggleSimPlayer(${p.id})" class="px-2.5 py-1.5 rounded-lg text-xs font-medium border transition flex items-center gap-1.5 ${
           active
             ? "bg-indigo-600 border-indigo-400 text-white shadow"
@@ -608,7 +612,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       }
 
       const nameLookup = new Map();
-      allPlayersPoolForSim.forEach(p => nameLookup.set(p.id, (p.name || "").split(" ")[0]));
+      allPlayersPoolForSim.forEach(p => nameLookup.set(p.id, formatShortName(p.name)));
       const rosterNamesList = selectedArr.map(id => nameLookup.get(id) || id);
       if (simOtherPlayersCount > 0) {
         rosterNamesList.push(simOtherPlayersCount > 1 ? `Другой игрок ×${simOtherPlayersCount}` : "Другой игрок");
