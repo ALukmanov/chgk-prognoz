@@ -1,5 +1,6 @@
 import json
 import os
+from datetime import datetime, timezone, timedelta
 
 INPUT_JSON = "chgk_full_analytics.json"
 OUTPUT_HTML = "index.html"
@@ -30,9 +31,17 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
           <span class="px-2.5 py-0.5 text-[11px] font-semibold rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">Логистическая IRT-модель</span>
         </div>
         <p id="teamSubtitle" class="text-slate-400 text-xs sm:text-sm mt-1">Выберите состав, сложность пакета, дистанцию и редакторов</p>
+        <p class="text-[11px] text-slate-500 mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+          <span>🕒 Обновлено: <b class="text-slate-300">__LAST_UPDATED__</b></span>
+          <span class="hidden sm:inline">•</span>
+          <span>Автообновление: по вторникам в 12:00 МСК</span>
+        </p>
       </div>
-      <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+      <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
         <span id="modelSampleBadge" class="px-2.5 py-1 text-xs font-medium rounded-lg bg-slate-900 text-indigo-300 border border-slate-700">База: 0 игр</span>
+        <a href="https://github.com/ALukmanov/chgk-prognoz/actions/workflows/update.yml" target="_blank" rel="noopener noreferrer" title="Запустить обновление базы на GitHub" class="text-xs bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 px-3 py-1.5 rounded-lg transition flex items-center gap-1">
+          <span>🔄 Обновить рейтинг</span>
+        </a>
         <button type="button" onclick="clearAll()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-600 px-3 py-1.5 rounded-lg transition">
           Сбросить
         </button>
@@ -812,7 +821,12 @@ def main():
     }
 
     json_str = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
-    final_html = HTML_TEMPLATE.replace("__EMBEDDED_DATA__", json_str)
+    msk_now = datetime.now(timezone(timedelta(hours=3))).strftime("%d.%m.%Y %H:%M МСК")
+    final_html = (
+        HTML_TEMPLATE
+        .replace("__EMBEDDED_DATA__", json_str)
+        .replace("__LAST_UPDATED__", msk_now)
+    )
 
     with open(OUTPUT_HTML, "w", encoding="utf-8") as f:
         f.write(final_html)
