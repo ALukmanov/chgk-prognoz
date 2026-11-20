@@ -19,31 +19,36 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     ::-webkit-scrollbar-track { background: #0f172a; }
     ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
 
+    /* Анимации филина */
     @keyframes owl-peek {
-      0% { transform: translate(100%, 100%) rotate(15deg); }
-      15% { transform: translate(10px, 10px) rotate(-5deg); }
-      20% { transform: translate(0, 0) rotate(0deg); }
-      80% { transform: translate(0, 0) rotate(0deg); }
-      85% { transform: translate(10px, 10px) rotate(-5deg); }
-      100% { transform: translate(100%, 100%) rotate(15deg); }
+      0% { transform: translate(110%, 110%) rotate(14deg); }
+      15% { transform: translate(8px, 8px) rotate(-4deg); }
+      22% { transform: translate(0, 0) rotate(0deg); }
+      78% { transform: translate(0, 0) rotate(0deg); }
+      85% { transform: translate(8px, 8px) rotate(-4deg); }
+      100% { transform: translate(110%, 110%) rotate(14deg); }
     }
 
     @keyframes bubble-fade {
-      0% { opacity: 0; transform: scale(0.8) translateY(10px); }
+      0% { opacity: 0; transform: scale(0.85) translateY(8px); }
       10% { opacity: 1; transform: scale(1) translateY(0); }
       90% { opacity: 1; transform: scale(1) translateY(0); }
-      100% { opacity: 0; transform: scale(0.8) translateY(10px); }
+      100% { opacity: 0; transform: scale(0.85) translateY(8px); }
     }
 
     .owl-container {
       position: fixed;
-      bottom: -20px;
-      right: -20px;
+      bottom: -8px;
+      right: -6px;
       z-index: 100;
       cursor: pointer;
-      transform: translate(100%, 100%) rotate(15deg);
-      transition: transform 0.5s ease;
+      transform: translate(110%, 110%) rotate(14deg);
+      transition: transform 0.45s ease;
       user-select: none;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      pointer-events: auto;
     }
 
     .owl-container.active {
@@ -56,55 +61,117 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     }
 
     .speech-bubble {
-      position: absolute;
-      bottom: 120px;
-      right: 40px;
       background-color: #f1f5f9;
       color: #0f172a;
-      padding: 10px 14px;
+      padding: 9px 12px;
       border-radius: 14px;
       font-size: 13px;
       font-weight: 600;
-      width: 180px;
-      box-shadow: 0 10px 25px -5px rgba(0,0,0,0.5), 0 8px 10px -6px rgba(0,0,0,0.5);
+      width: 185px;
+      max-width: calc(100vw - 28px);
+      box-shadow: 0 10px 25px -5px rgba(0,0,0,0.55);
       border: 2px solid #6366f1;
       opacity: 0;
       pointer-events: none;
       transform-origin: bottom right;
+      margin-bottom: 6px;
+      margin-right: 18px;
+      position: relative;
+      line-height: 1.25;
+    }
+
+    @media (max-width: 640px) {
+      .speech-bubble {
+        width: 155px;
+        font-size: 11.5px;
+        padding: 7px 10px;
+        margin-right: 12px;
+      }
     }
 
     .speech-bubble::after {
       content: '';
       position: absolute;
-      bottom: -10px;
-      right: 40px;
-      border-width: 10px 10px 0;
+      bottom: -8px;
+      right: 26px;
+      border-width: 8px 8px 0;
       border-style: solid;
       border-color: #f1f5f9 transparent;
-      display: block;
-      width: 0;
     }
 
     .speech-bubble::before {
       content: '';
       position: absolute;
-      bottom: -13px;
-      right: 39px;
-      border-width: 11px 11px 0;
+      bottom: -11px;
+      right: 25px;
+      border-width: 9px 9px 0;
       border-style: solid;
       border-color: #6366f1 transparent;
-      display: block;
-      width: 0;
       z-index: -1;
     }
 
     .speech-bubble.show {
       animation: bubble-fade 4.5s ease forwards;
     }
+
+    /* Анимации спящего кота по центру */
+    @keyframes cat-breathe {
+      0%, 100% { transform: scale(1, 1); }
+      50% { transform: scale(1.03, 0.97); }
+    }
+
+    @keyframes cat-zzz {
+      0% { opacity: 0; transform: translate(0, 4px) scale(0.8); }
+      40% { opacity: 1; }
+      100% { opacity: 0; transform: translate(10px, -16px) scale(1.15); }
+    }
+
+    @keyframes cat-run-away {
+      0% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+      18% { transform: translate(-50%, -78%) scale(1.12) rotate(-8deg); opacity: 1; }
+      35% { transform: translate(-45%, -52%) scale(1.04) rotate(6deg); opacity: 1; }
+      100% { transform: translate(160vw, -58%) scale(0.85) rotate(14deg); opacity: 0; }
+    }
+
+    .cat-overlay {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0.7);
+      z-index: 120;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.6s ease, transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+      cursor: pointer;
+      user-select: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .cat-overlay.visible {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+      pointer-events: auto;
+    }
+
+    .cat-overlay.scared {
+      pointer-events: none;
+      animation: cat-run-away 0.85s cubic-bezier(0.45, 0, 0.85, 0.5) forwards;
+    }
+
+    .cat-body-breathe {
+      transform-origin: center bottom;
+      animation: cat-breathe 2.6s ease-in-out infinite;
+    }
+
+    .cat-zzz-1 { animation: cat-zzz 2.8s ease-in-out infinite; }
+    .cat-zzz-2 { animation: cat-zzz 2.8s ease-in-out 1.4s infinite; }
   </style>
 </head>
 <body class="min-h-screen p-3 sm:p-6 flex flex-col items-center">
   <div class="w-full max-w-5xl space-y-4">
+    <!-- Шапка -->
     <div class="card p-4 sm:p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
       <div>
         <div class="flex items-center gap-2.5 flex-wrap">
@@ -127,7 +194,9 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       </div>
     </div>
 
+    <!-- Основной блок прогноза -->
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5">
+      <!-- Левая колонка: Настройки -->
       <div class="lg:col-span-6 space-y-4">
         <div class="card p-4 space-y-3">
           <div class="flex justify-between items-center">
@@ -169,6 +238,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         </div>
       </div>
 
+      <!-- Правая колонка: Результат прогноза -->
       <div class="lg:col-span-6">
         <div class="card p-5 border-2 border-indigo-500/40 bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950/30 flex flex-col justify-between space-y-5 lg:sticky lg:top-6">
           <div class="space-y-4">
@@ -220,34 +290,121 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     </div>
   </div>
 
-  <div id="speechBubble" class="speech-bubble">А кто-нибудь помнит форму вопроса?</div>
-  <div id="owlContainer" class="owl-container w-28 h-28 sm:w-32 sm:h-32" onclick="onOwlClick()">
-    <svg viewBox="0 0 140 140" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full drop-shadow-lg">
-      <path d="M30 115 C30 65, 110 65, 110 115 Z" fill="#1e293b" />
-      <path d="M40 95 C45 80, 95 80, 100 95" stroke="#0f172a" stroke-width="4" stroke-linecap="round" />
-      <path d="M55 90 L85 90 L70 110 Z" fill="#f8fafc" />
-      <path d="M62 92 L78 92 L70 97 Z" fill="#0f172a" />
-      <circle cx="60" cy="92" r="4" fill="#0f172a" />
-      <circle cx="80" cy="92" r="4" fill="#0f172a" />
-      <path d="M100 65 C108 55, 125 65, 115 80 C110 85, 105 85, 102 75 Z" fill="#92400e" stroke="#78350f" stroke-width="2" />
-      <path d="M112 58 C115 54, 120 56, 118 60" stroke="#78350f" stroke-width="2" stroke-linecap="round" />
-      <path d="M116 62 C120 59, 124 62, 121 66" stroke="#78350f" stroke-width="2" stroke-linecap="round" />
-      <circle cx="70" cy="55" r="35" fill="#b45309" stroke="#78350f" stroke-width="3" />
-      <path d="M35 32 C45 20, 58 28, 55 35" stroke="#78350f" stroke-width="4" stroke-linecap="round" fill="#78350f" />
-      <path d="M105 32 C95 20, 82 28, 85 35" stroke="#78350f" stroke-width="4" stroke-linecap="round" fill="#78350f" />
-      <path d="M62 32 L70 38 L78 32" stroke="#78350f" stroke-width="2" stroke-linecap="round" />
-      <path d="M65 40 L70 45 L75 40" stroke="#78350f" stroke-width="2" stroke-linecap="round" />
-      <circle cx="53" cy="52" r="14" fill="#fef08a" stroke="#ca8a04" stroke-width="2" />
-      <circle id="owlPupilL" cx="54" cy="52" r="5" fill="#0f172a" />
-      <circle cx="52" cy="50" r="1.5" fill="#ffffff" />
-      <circle cx="87" cy="52" r="14" fill="#fef08a" stroke="#ca8a04" stroke-width="2" />
-      <circle id="owlPupilR" cx="86" cy="52" r="5" fill="#0f172a" />
-      <circle cx="84" cy="50" r="1.5" fill="#ffffff" />
-      <circle cx="53" cy="52" r="16" stroke="#1e293b" stroke-width="3" fill="none" />
-      <circle cx="87" cy="52" r="16" stroke="#1e293b" stroke-width="3" fill="none" />
-      <path d="M69 52 L71 52" stroke="#1e293b" stroke-width="3" />
-      <path id="owlBeak" d="M66 54 L74 54 L70 65 Z" fill="#f59e0b" stroke="#d97706" stroke-width="1.5" />
-      <path d="M85 88 C85 95, 93 95, 90 88" stroke="#d97706" stroke-width="3" stroke-linecap="round" />
+  <!-- Персонаж 1: Филин во фраке и очках (облачко жёстко привязано к нему) -->
+  <div id="owlContainer" class="owl-container" onclick="onOwlClick()">
+    <div id="speechBubble" class="speech-bubble">А кто-нибудь помнит форму вопроса?</div>
+    <svg viewBox="0 0 150 150" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-28 h-28 sm:w-36 sm:h-36 drop-shadow-2xl">
+      <!-- Фрак и плечи -->
+      <path d="M24 146 C26 98, 124 98, 126 146 Z" fill="#18181b" stroke="#09090b" stroke-width="2.5" />
+      <path d="M52 104 L98 104 L75 142 Z" fill="#f8fafc" />
+      <!-- Лацканы фрака -->
+      <path d="M52 104 L38 118 L54 128 L68 142" fill="#27272a" stroke="#09090b" stroke-width="2" />
+      <path d="M98 104 L112 118 L96 128 L82 142" fill="#27272a" stroke="#09090b" stroke-width="2" />
+      <!-- Бабочка -->
+      <path d="M62 107 L75 113 L62 119 Z" fill="#09090b" />
+      <path d="M88 107 L75 113 L88 119 Z" fill="#09090b" />
+      <circle cx="75" cy="113" r="3.5" fill="#18181b" stroke="#09090b" stroke-width="1.5" />
+      <!-- Пуговицы -->
+      <circle cx="75" cy="126" r="1.8" fill="#0f172a" />
+      <circle cx="75" cy="134" r="1.8" fill="#0f172a" />
+
+      <!-- Длинные пучки-ушки филина -->
+      <path d="M40 46 L16 20 L48 34 L34 26 L56 38 Z" fill="#7c4a21" stroke="#1c1108" stroke-width="2.5" stroke-linejoin="round" />
+      <path d="M110 46 L134 20 L102 34 L116 26 L94 38 Z" fill="#7c4a21" stroke="#1c1108" stroke-width="2.5" stroke-linejoin="round" />
+      <path d="M22 24 L38 38 M128 24 L112 38" stroke="#1c1108" stroke-width="2.5" stroke-linecap="round" />
+
+      <!-- Голова филина (пёстрая) -->
+      <ellipse cx="75" cy="68" rx="40" ry="36" fill="#9a6434" stroke="#1c1108" stroke-width="3" />
+      <!-- Светлый лицевой диск -->
+      <path d="M41 66 C41 48, 66 48, 75 62 C84 48, 109 48, 109 66 C109 88, 92 98, 75 96 C58 98, 41 88, 41 66 Z" fill="#c99762" />
+      <!-- Тёмные пестрины на лбу и щеках -->
+      <path d="M62 38 L65 44 M75 35 L75 43 M88 38 L85 44 M54 44 L59 49 M96 44 L91 49" stroke="#29170a" stroke-width="3" stroke-linecap="round" />
+      <path d="M44 82 L49 87 M54 90 L58 94 M106 82 L101 87 M96 90 L92 94" stroke="#29170a" stroke-width="2.5" stroke-linecap="round" />
+
+      <!-- Огненно-оранжевые глаза филина -->
+      <circle cx="57" cy="66" r="13.5" fill="#f97316" stroke="#1c1108" stroke-width="2.5" />
+      <circle cx="57" cy="66" r="10.5" fill="#fb923c" />
+      <circle id="owlPupilL" cx="58" cy="66" r="5.5" fill="#09090b" />
+      <circle cx="54.5" cy="62.5" r="2" fill="#ffffff" />
+
+      <circle cx="93" cy="66" r="13.5" fill="#f97316" stroke="#1c1108" stroke-width="2.5" />
+      <circle cx="93" cy="66" r="10.5" fill="#fb923c" />
+      <circle id="owlPupilR" cx="92" cy="66" r="5.5" fill="#09090b" />
+      <circle cx="88.5" cy="62.5" r="2" fill="#ffffff" />
+
+      <!-- Суровые брови филина -->
+      <path id="owlBrowL" d="M40 53 L71 61" stroke="#29170a" stroke-width="4.5" stroke-linecap="round" />
+      <path id="owlBrowR" d="M110 53 L79 61" stroke="#29170a" stroke-width="4.5" stroke-linecap="round" />
+
+      <!-- Круглые очки в тёмной оправе -->
+      <circle cx="57" cy="66" r="16.5" stroke="#1e293b" stroke-width="3.5" fill="none" />
+      <circle cx="93" cy="66" r="16.5" stroke="#1e293b" stroke-width="3.5" fill="none" />
+      <path d="M73.5 66 L76.5 66" stroke="#1e293b" stroke-width="3.5" />
+
+      <!-- Тёмный крючковатый клюв -->
+      <path id="owlBeak" d="M70 71 Q75 68 80 71 L75 88 Z" fill="#1e293b" stroke="#09090b" stroke-width="2" stroke-linejoin="round" />
+
+      <!-- Когтистая лапа на краю -->
+      <path d="M114 108 C126 104, 138 112, 134 126 C128 134, 114 134, 110 124 Z" fill="#9a6434" stroke="#1c1108" stroke-width="2.5" />
+      <path d="M132 110 L141 112 M134 118 L143 120 M131 126 L139 128" stroke="#18181b" stroke-width="3" stroke-linecap="round" />
+    </svg>
+  </div>
+
+  <!-- Персонаж 2: Мурчащий кот (появляется по центру после 60 сек бездействия) -->
+  <div id="catOverlay" class="cat-overlay" onclick="scareCat()">
+    <div class="px-3 py-1 rounded-full bg-slate-900/90 border border-indigo-500/40 text-[11px] text-indigo-200 mb-1 shadow-lg">
+      Мур-р-р... (нажми, чтобы прогнать)
+    </div>
+    <svg viewBox="0 0 220 175" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-48 h-40 sm:w-56 sm:h-44 drop-shadow-2xl">
+      <!-- Zzz -->
+      <text x="112" y="34" fill="#cbd5e1" font-size="16" font-weight="700" class="cat-zzz-1">Z</text>
+      <text x="132" y="24" fill="#94a3b8" font-size="12" font-weight="700" class="cat-zzz-2">z</text>
+
+      <!-- Подушка -->
+      <ellipse cx="110" cy="128" rx="84" ry="34" fill="#475569" stroke="#1e293b" stroke-width="3.5" />
+      <ellipse cx="110" cy="124" rx="74" ry="26" fill="#64748b" />
+
+      <g class="cat-body-breathe">
+        <!-- Пушистое тело клубком -->
+        <ellipse cx="122" cy="100" rx="54" ry="38" fill="#d6ccc2" stroke="#29170a" stroke-width="3" />
+        <!-- Рыжее пятно на спине -->
+        <path d="M105 64 C132 60, 162 72, 168 96 C150 92, 130 96, 114 106 Z" fill="#e6a16b" />
+        <!-- Пушистый хвост -->
+        <path d="M168 104 C180 132, 128 148, 86 134 C78 130, 80 116, 94 118 C122 124, 152 118, 156 100 Z" fill="#e6a16b" stroke="#29170a" stroke-width="3" stroke-linejoin="round" />
+        <path d="M84 128 C78 122, 86 114, 100 118 L98 133 C92 134, 86 132, 84 128 Z" fill="#fff7ed" />
+
+        <!-- Голова кота -->
+        <circle cx="78" cy="86" r="30" fill="#fff7ed" stroke="#29170a" stroke-width="3" />
+        <!-- Рыжие ушки и шапочка -->
+        <path d="M52 72 L46 42 L72 58 Z" fill="#e6a16b" stroke="#29170a" stroke-width="3" stroke-linejoin="round" />
+        <path d="M53 66 L50 50 L65 59 Z" fill="#fda4af" />
+        <path d="M86 58 L108 42 L106 72 Z" fill="#e6a16b" stroke="#29170a" stroke-width="3" stroke-linejoin="round" />
+        <path d="M92 59 L104 50 L102 66 Z" fill="#fda4af" />
+        <path d="M50 78 C54 56, 80 52, 92 64 C84 68, 76 74, 72 80 C64 76, 56 76, 50 78 Z" fill="#e6a16b" />
+
+        <!-- Спящие глаза (по умолчанию) -->
+        <g id="catEyesSleep">
+          <path d="M60 86 Q66 80 72 86" stroke="#29170a" stroke-width="3" stroke-linecap="round" />
+          <path d="M84 86 Q90 80 96 86" stroke="#29170a" stroke-width="3" stroke-linecap="round" />
+        </g>
+
+        <!-- Испуганные глаза (при клике) -->
+        <g id="catEyesScared" style="display:none;">
+          <circle cx="66" cy="84" r="6.5" fill="#fef08a" stroke="#29170a" stroke-width="2.5" />
+          <circle cx="66" cy="84" r="2.2" fill="#09090b" />
+          <circle cx="90" cy="84" r="6.5" fill="#fef08a" stroke="#29170a" stroke-width="2.5" />
+          <circle cx="90" cy="84" r="2.2" fill="#09090b" />
+        </g>
+
+        <!-- Носик и рот -->
+        <path d="M75 92 L81 92 L78 96 Z" fill="#fb7185" />
+        <path id="catMouth" d="M71 98 Q74.5 102 78 97 Q81.5 102 85 98" stroke="#29170a" stroke-width="2.5" stroke-linecap="round" />
+
+        <!-- Усы -->
+        <path d="M44 88 L56 90 M42 96 L56 95 M112 88 L100 90 M114 96 L100 95" stroke="#29170a" stroke-width="2" stroke-linecap="round" />
+        <!-- Лапка под мордой -->
+        <ellipse cx="64" cy="116" rx="13" ry="8" fill="#fff7ed" stroke="#29170a" stroke-width="2.5" />
+      </g>
     </svg>
   </div>
 
@@ -268,6 +425,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     let simSelectedEditors = new Set();
     let simOtherEditorsCount = 0;
 
+    // --- Филин ---
     const owlPhrases = [
       { text: "Я в сМЯКении!", mood: "shock" },
       { text: "Где мой сидр?", mood: "angry" },
@@ -280,6 +438,198 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     let owlHideTimer = null;
     let isOwlActive = false;
 
+    function triggerOwlPeek() {
+      if (isOwlActive || isCatVisible) return;
+      const owl = document.getElementById("owlContainer");
+      if (!owl) return;
+
+      isOwlActive = true;
+      owl.className = "owl-container active";
+      setOwlMood("normal");
+
+      owlTimer = setTimeout(() => {
+        if (owl.classList.contains("active") && !owl.classList.contains("clicked")) {
+          owl.className = "owl-container";
+          isOwlActive = false;
+        }
+      }, 8000);
+    }
+
+    function onOwlClick() {
+      const owl = document.getElementById("owlContainer");
+      const bubble = document.getElementById("speechBubble");
+      if (!owl || !bubble) return;
+
+      clearTimeout(owlTimer);
+      clearTimeout(owlHideTimer);
+
+      owl.className = "owl-container clicked";
+      const rand = owlPhrases[Math.floor(Math.random() * owlPhrases.length)];
+      bubble.textContent = rand.text;
+      setOwlMood(rand.mood);
+
+      bubble.classList.remove("show");
+      void bubble.offsetWidth;
+      bubble.classList.add("show");
+
+      owlHideTimer = setTimeout(() => {
+        owl.className = "owl-container";
+        bubble.classList.remove("show");
+        isOwlActive = false;
+      }, 4500);
+    }
+
+    function setOwlMood(mood) {
+      const pupilL = document.getElementById("owlPupilL");
+      const pupilR = document.getElementById("owlPupilR");
+      const beak = document.getElementById("owlBeak");
+      const browL = document.getElementById("owlBrowL");
+      const browR = document.getElementById("owlBrowR");
+      if (!pupilL || !pupilR || !beak) return;
+
+      // Сброс базовых позиций
+      pupilL.setAttribute("r", "5.5"); pupilL.setAttribute("cx", "58"); pupilL.setAttribute("cy", "66");
+      pupilR.setAttribute("r", "5.5"); pupilR.setAttribute("cx", "92"); pupilR.setAttribute("cy", "66");
+      beak.setAttribute("d", "M70 71 Q75 68 80 71 L75 88 Z");
+      if (browL) browL.setAttribute("d", "M40 53 L71 61");
+      if (browR) browR.setAttribute("d", "M110 53 L79 61");
+
+      if (mood === "shock") {
+        pupilL.setAttribute("r", "2.5"); pupilL.setAttribute("cx", "57");
+        pupilR.setAttribute("r", "2.5"); pupilR.setAttribute("cx", "93");
+        beak.setAttribute("d", "M68 72 L82 72 L75 92 Z");
+        if (browL) browL.setAttribute("d", "M42 48 L68 52");
+        if (browR) browR.setAttribute("d", "M108 48 L82 52");
+      } else if (mood === "angry") {
+        pupilL.setAttribute("cx", "60");
+        pupilR.setAttribute("cx", "90");
+        if (browL) browL.setAttribute("d", "M40 50 L72 64");
+        if (browR) browR.setAttribute("d", "M110 50 L78 64");
+      } else if (mood === "confused") {
+        pupilL.setAttribute("cx", "61"); pupilL.setAttribute("cy", "64");
+        pupilR.setAttribute("cx", "89"); pupilR.setAttribute("cy", "68");
+        if (browL) browL.setAttribute("d", "M42 50 L70 56");
+        if (browR) browR.setAttribute("d", "M108 56 L80 58");
+      } else if (mood === "tired") {
+        pupilL.setAttribute("r", "4"); pupilL.setAttribute("cy", "69");
+        pupilR.setAttribute("r", "4"); pupilR.setAttribute("cy", "69");
+        if (browL) browL.setAttribute("d", "M42 58 L70 59");
+        if (browR) browR.setAttribute("d", "M108 58 L80 59");
+      }
+    }
+
+    // --- Мурчащий кот (60 сек бездействия) ---
+    let idleTimer = null;
+    let isCatVisible = false;
+    let audioCtx = null;
+    let purrNodes = null;
+
+    function unlockAudio() {
+      try {
+        if (!audioCtx) {
+          const AC = window.AudioContext || window.webkitAudioContext;
+          if (AC) audioCtx = new AC();
+        }
+        if (audioCtx && audioCtx.state === "suspended") {
+          audioCtx.resume();
+        }
+      } catch (e) {}
+    }
+
+    function startPurrSound() {
+      try {
+        unlockAudio();
+        if (!audioCtx || audioCtx.state !== "running") return;
+        stopPurrSound();
+
+        // Мягкий синтез мурчания: 26 Гц основной тон + модуляция дыханием (0.4 Гц)
+        const osc = audioCtx.createOscillator();
+        osc.type = "sawtooth";
+        osc.frequency.value = 26;
+
+        const filter = audioCtx.createBiquadFilter();
+        filter.type = "lowpass";
+        filter.frequency.value = 135;
+
+        const breathLfo = audioCtx.createOscillator();
+        breathLfo.type = "sine";
+        breathLfo.frequency.value = 0.38;
+
+        const breathGain = audioCtx.createGain();
+        breathGain.gain.value = 0.045;
+
+        const masterGain = audioCtx.createGain();
+        masterGain.gain.value = 0.075;
+
+        osc.connect(filter);
+        filter.connect(masterGain);
+        breathLfo.connect(breathGain);
+        breathGain.connect(masterGain.gain);
+        masterGain.connect(audioCtx.destination);
+
+        osc.start();
+        breathLfo.start();
+        purrNodes = { osc, breathLfo, masterGain };
+      } catch (e) {}
+    }
+
+    function stopPurrSound() {
+      if (!purrNodes) return;
+      try {
+        purrNodes.osc.stop();
+        purrNodes.breathLfo.stop();
+        purrNodes.masterGain.disconnect();
+      } catch (e) {}
+      purrNodes = null;
+    }
+
+    function showPurringCat() {
+      const cat = document.getElementById("catOverlay");
+      if (!cat || isCatVisible) return;
+      isCatVisible = true;
+      const sleepEyes = document.getElementById("catEyesSleep");
+      const scaredEyes = document.getElementById("catEyesScared");
+      const mouth = document.getElementById("catMouth");
+      if (sleepEyes) sleepEyes.style.display = "block";
+      if (scaredEyes) scaredEyes.style.display = "none";
+      if (mouth) mouth.setAttribute("d", "M71 98 Q74.5 102 78 97 Q81.5 102 85 98");
+
+      cat.className = "cat-overlay visible";
+      startPurrSound();
+    }
+
+    function scareCat() {
+      const cat = document.getElementById("catOverlay");
+      if (!cat || !isCatVisible) return;
+      stopPurrSound();
+
+      const sleepEyes = document.getElementById("catEyesSleep");
+      const scaredEyes = document.getElementById("catEyesScared");
+      const mouth = document.getElementById("catMouth");
+      if (sleepEyes) sleepEyes.style.display = "none";
+      if (scaredEyes) scaredEyes.style.display = "block";
+      if (mouth) mouth.setAttribute("d", "M74 101 Q78 96 82 101");
+
+      cat.className = "cat-overlay visible scared";
+      setTimeout(() => {
+        cat.className = "cat-overlay";
+        isCatVisible = false;
+        resetIdleTimer();
+      }, 900);
+    }
+
+    function resetIdleTimer() {
+      unlockAudio();
+      if (isCatVisible) return; // Если кот уже на экране, ждём клика по нему
+      clearTimeout(idleTimer);
+      idleTimer = setTimeout(showPurringCat, 60000);
+    }
+
+    ["click", "touchstart", "mousemove", "keydown", "scroll"].forEach(evt => {
+      window.addEventListener(evt, resetIdleTimer, { passive: true });
+    });
+
+    // --- Утилиты и IRT-модель ---
     function formatShortName(fullName) {
       const parts = (fullName || "").trim().split(/\s+/).filter(Boolean);
       if (parts.length === 0) return "";
@@ -295,89 +645,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     function setHtml(id, val) {
       const el = document.getElementById(id);
       if (el) el.innerHTML = val;
-    }
-
-    function triggerOwlPeek() {
-      if (isOwlActive) return;
-      const owl = document.getElementById("owlContainer");
-      if (!owl) return;
-
-      isOwlActive = true;
-      owl.className = "owl-container w-28 h-28 sm:w-32 sm:h-32 active";
-      setOwlMood("normal");
-
-      owlTimer = setTimeout(() => {
-        if (owl.classList.contains("active") && !owl.classList.contains("clicked")) {
-          owl.className = "owl-container w-28 h-28 sm:w-32 sm:h-32";
-          isOwlActive = false;
-        }
-      }, 8000);
-    }
-
-    function onOwlClick() {
-      const owl = document.getElementById("owlContainer");
-      const bubble = document.getElementById("speechBubble");
-      if (!owl || !bubble) return;
-
-      clearTimeout(owlTimer);
-      clearTimeout(owlHideTimer);
-
-      owl.className = "owl-container w-28 h-28 sm:w-32 sm:h-32 clicked";
-
-      const rand = owlPhrases[Math.floor(Math.random() * owlPhrases.length)];
-      bubble.textContent = rand.text;
-      setOwlMood(rand.mood);
-
-      bubble.classList.remove("show");
-      void bubble.offsetWidth;
-      bubble.classList.add("show");
-
-      owlHideTimer = setTimeout(() => {
-        owl.className = "owl-container w-28 h-28 sm:w-32 sm:h-32";
-        bubble.classList.remove("show");
-        isOwlActive = false;
-      }, 4500);
-    }
-
-    function setOwlMood(mood) {
-      const pupilL = document.getElementById("owlPupilL");
-      const pupilR = document.getElementById("owlPupilR");
-      const beak = document.getElementById("owlBeak");
-      if (!pupilL || !pupilR || !beak) return;
-
-      if (mood === "shock") {
-        pupilL.setAttribute("r", "2.5");
-        pupilR.setAttribute("r", "2.5");
-        pupilL.setAttribute("cx", "53");
-        pupilR.setAttribute("cx", "87");
-        beak.setAttribute("d", "M65 55 L75 55 L70 68 Z");
-      } else if (mood === "angry") {
-        pupilL.setAttribute("r", "4.5");
-        pupilR.setAttribute("r", "4.5");
-        pupilL.setAttribute("cx", "56");
-        pupilR.setAttribute("cx", "84");
-        beak.setAttribute("d", "M66 54 L74 54 L70 60 Z");
-      } else if (mood === "confused") {
-        pupilL.setAttribute("r", "4");
-        pupilR.setAttribute("r", "4");
-        pupilL.setAttribute("cx", "56");
-        pupilR.setAttribute("cx", "84");
-        beak.setAttribute("d", "M66 54 L74 54 L70 63 Z");
-      } else if (mood === "tired") {
-        pupilL.setAttribute("r", "3.5");
-        pupilR.setAttribute("r", "3.5");
-        pupilL.setAttribute("cy", "55");
-        pupilR.setAttribute("cy", "55");
-        beak.setAttribute("d", "M66 54 L74 54 L70 62 Z");
-      } else {
-        pupilL.setAttribute("r", "5");
-        pupilR.setAttribute("r", "5");
-        pupilL.setAttribute("cx", "54");
-        pupilR.setAttribute("cx", "86");
-        pupilL.setAttribute("cy", "52");
-        pupilR.setAttribute("cy", "52");
-        beak.setAttribute("d", "M66 54 L74 54 L70 65 Z");
-      }
     }
 
     function sigmoid(z) {
@@ -981,11 +1248,12 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       renderSimEditorsUI();
       renderSimulatorUI();
 
+      // Запуск филина и таймера бездействия для кота
       setInterval(() => {
         if (Math.random() > 0.4) triggerOwlPeek();
       }, 10000);
-
       setTimeout(triggerOwlPeek, 5000);
+      resetIdleTimer();
     }
 
     window.addEventListener("DOMContentLoaded", initApp);
