@@ -355,7 +355,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     <div class="px-3 py-1 rounded-full bg-slate-900/90 border border-indigo-500/40 text-[11px] text-indigo-200 mb-1 shadow-lg">
       Мур-р-р... (нажми, чтобы прогнать)
     </div>
-    <svg viewBox="0 0 220 175" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-48 h-40 sm:w-56 sm:h-44 drop-shadow-2xl">
+    <svg viewBox="0 0 220 175" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-[70vw] max-w-[360px] sm:w-[44vw] sm:max-w-[460px] h-auto drop-shadow-2xl">
       <!-- Zzz -->
       <text x="112" y="34" fill="#cbd5e1" font-size="16" font-weight="700" class="cat-zzz-1">Z</text>
       <text x="132" y="24" fill="#94a3b8" font-size="12" font-weight="700" class="cat-zzz-2">z</text>
@@ -1248,11 +1248,15 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       renderSimEditorsUI();
       renderSimulatorUI();
 
-      // Запуск филина и таймера бездействия для кота
-      setInterval(() => {
-        if (Math.random() > 0.4) triggerOwlPeek();
-      }, 10000);
-      setTimeout(triggerOwlPeek, 5000);
+      // Запуск филина раз в 20–25 секунд и таймера бездействия для кота
+      function scheduleNextOwl() {
+        const delay = 20000 + Math.floor(Math.random() * 5000);
+        setTimeout(() => {
+          triggerOwlPeek();
+          scheduleNextOwl();
+        }, delay);
+      }
+      scheduleNextOwl();
       resetIdleTimer();
     }
 
