@@ -177,7 +177,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         <div class="flex items-center gap-2.5 flex-wrap">
           <span class="text-2xl">🔮</span>
           <h1 id="teamTitle" class="text-xl sm:text-2xl font-bold text-white">Прогноз ЧГК</h1>
-          <span class="px-2.5 py-0.5 text-[11px] font-semibold rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">Логистическая IRT-модель</span>
+          <span class="px-2.5 py-0.5 text-[11px] font-semibold rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">Логистическая IRT-модель • Time Decay 1.5 г.</span>
         </div>
         <p id="teamSubtitle" class="text-slate-400 text-xs sm:text-sm mt-1">Выберите состав, сложность пакета, дистанцию и редакторов</p>
         <p class="text-[11px] text-slate-500 mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
@@ -412,6 +412,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     const EMBEDDED_DATA = __EMBEDDED_DATA__;
     const DISTANCES = [36, 45, 48, 60, 72, 75, 81, 90];
     const REF_DL = 3.5;
+    const HALF_LIFE_DAYS = 547.5; // 1.5 года (~75 игр при темпе 1 игра/нед.)
 
     let rawData = EMBEDDED_DATA;
     let kaznacheevId = null;
@@ -773,7 +774,13 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       const colInt = P, colDl = P + 1, colS5 = P + 2, colS4 = P + 3, colS3 = P + 4, colS2 = P + 5;
       const extraCols = [colInt, colDl, colS5, colS4, colS3, colS2];
 
-      const avgPInit = games.reduce((s, g) => s + g._teamPct / 100, 0) / N;
+      let sumWP = 0, sumWInit = 0;
+      games.forEach(g => {
+        const tw = typeof g._timeW === "number" ? g._timeW : 1.0;
+        sumWP += tw * (g._teamPct / 100);
+        sumWInit += tw;
+      });
+      const avgPInit = sumWInit > 0 ? sumWP / sumWInit : 0.5;
       let theta = new Array(dim).fill(0);
       theta[colInt] = logit(avgPInit);
       theta[colDl] = defaultDlSlope;
@@ -793,7 +800,8 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
       const gameData = games.map(g => {
         const q = Math.max(1, Number(g._totalQ) || 36);
-        const effN = Math.min(45, q) / 3.0;
+        const tw = typeof g._timeW === "number" ? g._timeW : 1.0;
+        const effN = (Math.min(45, q) / 3.0) * tw;
         const yRate = Math.min(0.995, Math.max(0.005, g._teamPct / 100));
         const active = [];
         (g.members || []).forEach(m => {
@@ -864,17 +872,20 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       let pen2 = isFinite(theta[colS2]) ? Math.min(pen3 - 0.08, Math.max(-1.60, theta[colS2])) : Math.min(pen3 - 0.18, defaultPen.pen2);
 
       let ssLogit = 0;
+      let sumTimeW = 0;
       gameData.forEach(gd => {
         const g = gd.g;
+        const tw = typeof g._timeW === "number" ? g._timeW : 1.0;
         let predEta = baseLogitAtRefDl + dlSlope * (g._dl - REF_DL) + pen5 * g._s5 + pen4 * g._s4 + pen3 * g._s3 + pen2 * g._s2;
         gd.active.forEach(idx => { predEta += beta[idx]; });
         const obsEta = logit(gd.yRate);
-        ssLogit += (obsEta - predEta) ** 2;
+        ssLogit += tw * (obsEta - predEta) ** 2;
+        sumTimeW += tw;
         g._normLogit = obsEta - dlSlope * (g._dl - REF_DL) - pen5 * g._s5 - pen4 * g._s4 - pen3 * g._s3 - pen2 * g._s2;
         g._normPct = sigmoid(g._normLogit) * 100;
       });
 
-      const rmseLogit = Math.max(0.18, Math.min(0.85, Math.sqrt(ssLogit / N)));
+      const rmseLogit = Math.max(0.18, Math.min(0.85, Math.sqrt(ssLogit / Math.max(1e-6, sumTimeW))));
       const weightsMap = new Map();
       pIds.forEach((id, idx) => weightsMap.set(id, beta[idx]));
 
@@ -1188,8 +1199,21 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       if (names) setText("teamTitle", names + " • Прогноз");
       setText("modelSampleBadge", `База: ${rawData.games.length} игр`);
 
+      let maxDateMs = 0;
+      rawData.games.forEach(g => {
+        const ts = g.date ? Date.parse(g.date) : NaN;
+        g._ts = isFinite(ts) ? ts : null;
+        if (g._ts && g._ts > maxDateMs) maxDateMs = g._ts;
+      });
+
       const pStats = new Map();
       rawData.games.forEach(g => {
+        if (maxDateMs > 0 && g._ts) {
+          const ageDays = Math.max(0, (maxDateMs - g._ts) / 86400000);
+          g._timeW = Math.pow(0.5, ageDays / HALF_LIFE_DAYS);
+        } else {
+          g._timeW = 1.0;
+        }
         const totalQ = Number(g.totalQuestions) || 36;
         const takenQ = Number(g.taken) || 0;
         g._teamPct = totalQ > 0 ? (takenQ / totalQ) * 100 : 0;
@@ -1287,6 +1311,7 @@ def main():
                     if full:
                         editors.append(full)
         slim_games.append({
+            "date": str(g.get("dateEnd") or g.get("dateStart") or "")[:10],
             "taken": g.get("taken", 0),
             "totalQuestions": g.get("totalQuestions", 36),
             "trueDL": g.get("trueDL"),
