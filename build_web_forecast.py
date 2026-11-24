@@ -1,3 +1,4 @@
+import re
 import json
 import os
 from datetime import datetime, timezone, timedelta
@@ -1367,8 +1368,10 @@ def _parse_float_val(val):
     except ValueError:
         return None
 
+
 def _extract_declared_dl(g):
-    # Ищем заявленный DL в полях описания/турнира (включая вложенный объект tournament и текст описания)
+    if not isinstance(g, dict):
+        return None
     direct_keys = [
         "declaredDL", "declared_dl", "claimedDL", "claimed_dl",
         "announcedDL", "announced_dl", "difficulty", "dl",
@@ -1387,7 +1390,6 @@ def _extract_declared_dl(g):
                 if v is not None and 0.5 <= v <= 10.5:
                     return round(v, 2)
 
-    # Если заявленный DL указан текстом в описании / анонсе / названии турнира (например: "DL: 3.2", "сложность 4,0", "DL = 2.8")
     text_keys = ["description", "comment", "notes", "announcement", "subtitle", "name", "title"]
     patterns = [
         r"(?:заявленн[а-я]*\s+)?(?:сложност[ьи]|dl|дл)\s*[:=—–-]?\s*([1-9](?:[.,]\d)?)",
@@ -1406,6 +1408,7 @@ def _extract_declared_dl(g):
                         if v is not None and 0.5 <= v <= 10.5:
                             return round(v, 2)
     return None
+
 
 def main():
     if not os.path.exists(INPUT_JSON):
