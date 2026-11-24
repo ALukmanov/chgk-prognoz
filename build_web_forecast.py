@@ -517,7 +517,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         if (browR) browR.setAttribute("d", "M110 50 L78 64");
       } else if (mood === "confused") {
         pupilL.setAttribute("cx", "61"); pupilL.setAttribute("cy", "64");
-        pupilR.setAttribute("cx", "89"); pupilL.setAttribute("cy", "68");
+        pupilR.setAttribute("cx", "89"); pupilR.setAttribute("cy", "68");
         if (browL) browL.setAttribute("d", "M42 50 L70 56");
         if (browR) browR.setAttribute("d", "M108 56 L80 58");
       } else if (mood === "tired") {
@@ -1251,6 +1251,40 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       }
     }
 
+    function initApp() {
+      const names = Object.values(rawData.teamNames || {}).filter(Boolean).join(" + ");
+      if (names) setText("teamTitle", names + " • Прогноз");
+      setText("modelSampleBadge", `База: ${rawData.games.length} игр`);
+
+      const pStats = new Map();
+      rawData.games.forEach(g => {
+        const totalQ = Number(g.totalQuestions) || 36;
+        const takenQ = Number(g.taken) || 0;
+        g._teamPct = totalQ > 0 ? (takenQ / totalQ) * 100 : 0;
+        g._totalQ = totalQ;
+        const mList = Array.isArray(g.members) ? g.members : [];
+        g._rosterSize = mList.length > 0 ? Math.min(6, mList.length) : 6;
+        const parsedTrueDl = Number(g.trueDL);
+        const parsedDeclaredDl = Number(g.declaredDL);
+        if (isFinite(parsedTrueDl) && parsedTrueDl > 0) {
+          g._dl = Math.min(10.0, Math.max(1.0, parsedTrueDl));
+        } else if (isFinite(parsedDeclaredDl) && parsedDeclaredDl > 0) {
+          g._dl = Math.min(10.0, Math.max(1.0, parsedDeclaredDl));
+        } else if (totalQ > 0 && Number(g.fieldAvg) > 0) {
+          g._dl = Math.min(9.5, Math.max(1.0, +(8.2 - (Number(g.fieldAvg) / totalQ) * 8.5).toFixed(2)));
+        } else {
+          g._dl = REF_DL;
+        }
+        mList.forEach(m => {
+          if (!m || !m.id) return;
+          if (!kaznacheevId && (m.name || "").includes("Казначеев")) kaznacheevId = m.id;
+          if (!pStats.has(m.id)) pStats.set(m.id, { id: m.id, name: m.name || ("Игрок " + m.id), totalGames: 0 });
+          pStats.get(m.id).totalGames++;
+        });
+      });
+
+      initEditorsAndWeights();
+      updateTimeDecayBtnUI();
     function rebuildSignificantEditors() {
       significantEditorsMap.clear();
       const edMap = new Map();
@@ -1286,37 +1320,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       rebuildSignificantEditors();
     }
 
-    function initApp() {
-      const names = Object.values(rawData.teamNames || {}).filter(Boolean).join(" + ");
-      if (names) setText("teamTitle", names + " • Прогноз");
-      setText("modelSampleBadge", `База: ${rawData.games.length} игр`);
-
-      const pStats = new Map();
-      rawData.games.forEach(g => {
-        const totalQ = Number(g.totalQuestions) || 36;
-        const takenQ = Number(g.taken) || 0;
-        g._teamPct = totalQ > 0 ? (takenQ / totalQ) * 100 : 0;
-        g._totalQ = totalQ;
-        const mList = Array.isArray(g.members) ? g.members : [];
-        g._rosterSize = mList.length > 0 ? Math.min(6, mList.length) : 6;
-        if (typeof g.trueDL === "number" && g.trueDL > 0) {
-          g._dl = g.trueDL;
-        } else if (totalQ > 0 && Number(g.fieldAvg) > 0) {
-          g._dl = Math.min(9.5, Math.max(1.0, +(8.2 - (Number(g.fieldAvg) / totalQ) * 8.5).toFixed(2)));
-        } else {
-          g._dl = REF_DL;
-        }
-        mList.forEach(m => {
-          if (!m || !m.id) return;
-          if (!kaznacheevId && (m.name || "").includes("Казначеев")) kaznacheevId = m.id;
-          if (!pStats.has(m.id)) pStats.set(m.id, { id: m.id, name: m.name || ("Игрок " + m.id), totalGames: 0 });
-          pStats.get(m.id).totalGames++;
-        });
-      });
-
-      initEditorsAndWeights();
-      updateTimeDecayBtnUI();
-
       allPlayersPoolForSim = Array.from(pStats.values())
         .filter(p => p.totalGames >= 5)
         .sort((a, b) => b.totalGames - a.totalGames);
@@ -1345,6 +1348,65 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 </html>
 """
 
+
+def _parse_float_val(val):
+    if val is None or isinstance(val, bool):
+        return None
+    if isinstance(val, (int, float)):
+        v = float(val)
+        return v if v == v and abs(v) != float("inf") else None
+    s = str(val).strip().replace(",", ".")
+    if not s:
+        return None
+    m = re.search(r"[-+]?(?:\d+\.?\d*|\.\d+)", s)
+    if not m:
+        return None
+    try:
+        v = float(m.group(0))
+        return v if v == v and abs(v) != float("inf") else None
+    except ValueError:
+        return None
+
+def _extract_declared_dl(g):
+    # Ищем заявленный DL в полях описания/турнира (включая вложенный объект tournament и текст описания)
+    direct_keys = [
+        "declaredDL", "declared_dl", "claimedDL", "claimed_dl",
+        "announcedDL", "announced_dl", "difficulty", "dl",
+        "tournamentDifficulty", "tournament_difficulty"
+    ]
+    containers = [g]
+    for ck in ["tournament", "tournamentInfo", "tournament_info", "meta", "info"]:
+        sub = g.get(ck)
+        if isinstance(sub, dict):
+            containers.append(sub)
+
+    for c in containers:
+        for k in direct_keys:
+            if k in c:
+                v = _parse_float_val(c.get(k))
+                if v is not None and 0.5 <= v <= 10.5:
+                    return round(v, 2)
+
+    # Если заявленный DL указан текстом в описании / анонсе / названии турнира (например: "DL: 3.2", "сложность 4,0", "DL = 2.8")
+    text_keys = ["description", "comment", "notes", "announcement", "subtitle", "name", "title"]
+    patterns = [
+        r"(?:заявленн[а-я]*\s+)?(?:сложност[ьи]|dl|дл)\s*[:=—–-]?\s*([1-9](?:[.,]\d)?)",
+        r"\b(?:dl|дл)\s*[~≈]?\s*([1-9](?:[.,]\d)?)",
+        r"сложност[ьи]\s+([1-9](?:[.,]\d)?)"
+    ]
+    for c in containers:
+        for tk in text_keys:
+            txt_val = c.get(tk)
+            if isinstance(txt_val, str) and txt_val.strip():
+                low = txt_val.lower()
+                for pat in patterns:
+                    m = re.search(pat, low, flags=re.IGNORECASE)
+                    if m:
+                        v = _parse_float_val(m.group(1))
+                        if v is not None and 0.5 <= v <= 10.5:
+                            return round(v, 2)
+    return None
+
 def main():
     if not os.path.exists(INPUT_JSON):
         print(f"Ошибка: файл '{INPUT_JSON}' не найден в текущей папке.")
@@ -1370,6 +1432,7 @@ def main():
             "taken": g.get("taken", 0),
             "totalQuestions": g.get("totalQuestions", 36),
             "trueDL": g.get("trueDL"),
+            "declaredDL": _extract_declared_dl(g),
             "fieldAvg": g.get("fieldAvg", 0),
             "editors": editors,
             "members": [{"id": m.get("id"), "name": m.get("name", "")} for m in (g.get("members") or []) if m.get("id")]
