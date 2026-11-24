@@ -1,4 +1,3 @@
-import re
 import json
 import os
 from datetime import datetime, timezone, timedelta
@@ -178,7 +177,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         <div class="flex items-center gap-2.5 flex-wrap">
           <span class="text-2xl">🔮</span>
           <h1 id="teamTitle" class="text-xl sm:text-2xl font-bold text-white">Прогноз ЧГК</h1>
-          <span class="px-2.5 py-0.5 text-[11px] font-semibold rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">Логистическая IRT-модель • Time Decay 1 г.</span>
+          <span class="px-2.5 py-0.5 text-[11px] font-semibold rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">Логистическая IRT-модель</span>
         </div>
         <p id="teamSubtitle" class="text-slate-400 text-xs sm:text-sm mt-1">Выберите состав, сложность пакета, дистанцию и редакторов</p>
         <p class="text-[11px] text-slate-500 mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
@@ -269,14 +268,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
                 <div id="simHighPct" class="text-xs text-emerald-200/80 mt-1">—%</div>
                 <div class="text-[10px] text-slate-400 mt-1">удачный пакет</div>
               </div>
-            </div>
-
-            <div class="flex items-center justify-between gap-2 pt-1">
-              <button type="button" id="timeDecayToggleBtn" onclick="toggleTimeDecay()" class="px-3 py-1.5 rounded-lg text-xs font-semibold border transition flex items-center gap-1.5 bg-indigo-600/25 border-indigo-400/60 text-indigo-200 hover:bg-indigo-600/35">
-                <span>⏳ Time Decay</span>
-                <span id="timeDecayStatusText" class="text-[11px] font-mono text-emerald-300">ВКЛ • 1 г.</span>
-              </button>
-              <span id="timeDecayHintText" class="text-[11px] text-slate-400 text-right">Свежие игры весят больше (полураспад 1 год)</span>
             </div>
           </div>
 
@@ -421,7 +412,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     const EMBEDDED_DATA = __EMBEDDED_DATA__;
     const DISTANCES = [36, 45, 48, 60, 72, 75, 81, 90];
     const REF_DL = 3.5;
-    const HALF_LIFE_DAYS = 365.0; // 1 год (~50 игр при темпе 1 игра/нед.)
 
     let rawData = EMBEDDED_DATA;
     let kaznacheevId = null;
@@ -429,7 +419,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     let simSelectedIds = new Set();
     let simOtherPlayersCount = 0;
     let simTotalQ = 36;
-    let timeDecayEnabled = true;
 
     let significantEditorsMap = new Map();
     let simEditorsAlphabetical = [];
@@ -784,13 +773,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       const colInt = P, colDl = P + 1, colS5 = P + 2, colS4 = P + 3, colS3 = P + 4, colS2 = P + 5;
       const extraCols = [colInt, colDl, colS5, colS4, colS3, colS2];
 
-      let sumWP = 0, sumWInit = 0;
-      games.forEach(g => {
-        const tw = typeof g._timeW === "number" ? g._timeW : 1.0;
-        sumWP += tw * (g._teamPct / 100);
-        sumWInit += tw;
-      });
-      const avgPInit = sumWInit > 0 ? sumWP / sumWInit : 0.5;
+      const avgPInit = games.reduce((s, g) => s + g._teamPct / 100, 0) / N;
       let theta = new Array(dim).fill(0);
       theta[colInt] = logit(avgPInit);
       theta[colDl] = defaultDlSlope;
@@ -810,8 +793,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
       const gameData = games.map(g => {
         const q = Math.max(1, Number(g._totalQ) || 36);
-        const tw = typeof g._timeW === "number" ? g._timeW : 1.0;
-        const effN = (Math.min(45, q) / 3.0) * tw;
+        const effN = Math.min(45, q) / 3.0;
         const yRate = Math.min(0.995, Math.max(0.005, g._teamPct / 100));
         const active = [];
         (g.members || []).forEach(m => {
@@ -882,20 +864,17 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       let pen2 = isFinite(theta[colS2]) ? Math.min(pen3 - 0.08, Math.max(-1.60, theta[colS2])) : Math.min(pen3 - 0.18, defaultPen.pen2);
 
       let ssLogit = 0;
-      let sumTimeW = 0;
       gameData.forEach(gd => {
         const g = gd.g;
-        const tw = typeof g._timeW === "number" ? g._timeW : 1.0;
         let predEta = baseLogitAtRefDl + dlSlope * (g._dl - REF_DL) + pen5 * g._s5 + pen4 * g._s4 + pen3 * g._s3 + pen2 * g._s2;
         gd.active.forEach(idx => { predEta += beta[idx]; });
         const obsEta = logit(gd.yRate);
-        ssLogit += tw * (obsEta - predEta) ** 2;
-        sumTimeW += tw;
+        ssLogit += (obsEta - predEta) ** 2;
         g._normLogit = obsEta - dlSlope * (g._dl - REF_DL) - pen5 * g._s5 - pen4 * g._s4 - pen3 * g._s3 - pen2 * g._s2;
         g._normPct = sigmoid(g._normLogit) * 100;
       });
 
-      const rmseLogit = Math.max(0.18, Math.min(0.85, Math.sqrt(ssLogit / Math.max(1e-6, sumTimeW))));
+      const rmseLogit = Math.max(0.18, Math.min(0.85, Math.sqrt(ssLogit / N)));
       const weightsMap = new Map();
       pIds.forEach((id, idx) => weightsMap.set(id, beta[idx]));
 
@@ -924,53 +903,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     function setSimTotalQ(q) {
       simTotalQ = q;
       renderDistanceButtons();
-      updatePredictionOutput();
-    }
-
-    function applyTimeWeights(games, enabled) {
-      let maxDateMs = 0;
-      games.forEach(g => {
-        const ts = g.date ? Date.parse(g.date) : NaN;
-        g._ts = isFinite(ts) ? ts : null;
-        if (g._ts && g._ts > maxDateMs) maxDateMs = g._ts;
-      });
-      games.forEach(g => {
-        if (!enabled || !maxDateMs || !g._ts) {
-          g._timeW = 1.0;
-        } else {
-          const ageDays = Math.max(0, (maxDateMs - g._ts) / 86400000);
-          g._timeW = Math.pow(0.5, ageDays / HALF_LIFE_DAYS);
-        }
-      });
-    }
-
-    function updateTimeDecayBtnUI() {
-      const btn = document.getElementById("timeDecayToggleBtn");
-      const st = document.getElementById("timeDecayStatusText");
-      const hint = document.getElementById("timeDecayHintText");
-      if (btn) {
-        btn.className = timeDecayEnabled
-          ? "px-3 py-1.5 rounded-lg text-xs font-semibold border transition flex items-center gap-1.5 bg-indigo-600/25 border-indigo-400/60 text-indigo-200 hover:bg-indigo-600/35"
-          : "px-3 py-1.5 rounded-lg text-xs font-semibold border transition flex items-center gap-1.5 bg-slate-800/90 border-slate-700 text-slate-300 hover:border-slate-500";
-      }
-      if (st) {
-        st.textContent = timeDecayEnabled ? "ВКЛ • 1 г." : "ВЫКЛ • вся история";
-        st.className = timeDecayEnabled ? "text-[11px] font-mono text-emerald-300" : "text-[11px] font-mono text-slate-400";
-      }
-      if (hint) {
-        hint.textContent = timeDecayEnabled
-          ? "Свежие игры весят больше (полураспад 1 год)"
-          : "Все игры в базе имеют равный вес (1.0)";
-      }
-    }
-
-    function toggleTimeDecay() {
-      timeDecayEnabled = !timeDecayEnabled;
-      applyTimeWeights(rawData.games || [], timeDecayEnabled);
-      fitIRTModel(rawData.games || [], 18.0);
-      rebuildSignificantEditors();
-      updateTimeDecayBtnUI();
-      renderSimEditorsUI();
       updatePredictionOutput();
     }
 
@@ -1176,7 +1108,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
           })
         : relevantGames;
 
-      applyTimeWeights(relevantGames, timeDecayEnabled);
       const localModel = fitIRTModel(relevantGames, 9.0);
       let sumPlayerLogits = 0;
       selectedArr.forEach(pid => { sumPlayerLogits += (localModel.weights.get(pid) || 0); });
@@ -1265,12 +1196,8 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         g._totalQ = totalQ;
         const mList = Array.isArray(g.members) ? g.members : [];
         g._rosterSize = mList.length > 0 ? Math.min(6, mList.length) : 6;
-        const parsedTrueDl = Number(g.trueDL);
-        const parsedDeclaredDl = Number(g.declaredDL);
-        if (isFinite(parsedTrueDl) && parsedTrueDl > 0) {
-          g._dl = Math.min(10.0, Math.max(1.0, parsedTrueDl));
-        } else if (isFinite(parsedDeclaredDl) && parsedDeclaredDl > 0) {
-          g._dl = Math.min(10.0, Math.max(1.0, parsedDeclaredDl));
+        if (typeof g.trueDL === "number" && g.trueDL > 0) {
+          g._dl = g.trueDL;
         } else if (totalQ > 0 && Number(g.fieldAvg) > 0) {
           g._dl = Math.min(9.5, Math.max(1.0, +(8.2 - (Number(g.fieldAvg) / totalQ) * 8.5).toFixed(2)));
         } else {
@@ -1284,10 +1211,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         });
       });
 
-      initEditorsAndWeights();
-      updateTimeDecayBtnUI();
-    function rebuildSignificantEditors() {
-      significantEditorsMap.clear();
+      fitIRTModel(rawData.games, 18.0);
       const edMap = new Map();
       rawData.games.forEach(g => {
         (g.editors || []).forEach(name => {
@@ -1313,13 +1237,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
       sigEditors.forEach(e => significantEditorsMap.set(e.name, e));
       simEditorsAlphabetical = sigEditors.sort((a, b) => a.name.localeCompare(b.name, "ru"));
-    }
-
-    function initEditorsAndWeights() {
-      applyTimeWeights(rawData.games || [], timeDecayEnabled);
-      fitIRTModel(rawData.games || [], 18.0);
-      rebuildSignificantEditors();
-    }
 
       allPlayersPoolForSim = Array.from(pStats.values())
         .filter(p => p.totalGames >= 5)
@@ -1349,67 +1266,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 </html>
 """
 
-
-def _parse_float_val(val):
-    if val is None or isinstance(val, bool):
-        return None
-    if isinstance(val, (int, float)):
-        v = float(val)
-        return v if v == v and abs(v) != float("inf") else None
-    s = str(val).strip().replace(",", ".")
-    if not s:
-        return None
-    m = re.search(r"[-+]?(?:\d+\.?\d*|\.\d+)", s)
-    if not m:
-        return None
-    try:
-        v = float(m.group(0))
-        return v if v == v and abs(v) != float("inf") else None
-    except ValueError:
-        return None
-
-
-def _extract_declared_dl(g):
-    if not isinstance(g, dict):
-        return None
-    direct_keys = [
-        "declaredDL", "declared_dl", "claimedDL", "claimed_dl",
-        "announcedDL", "announced_dl", "difficulty", "dl",
-        "tournamentDifficulty", "tournament_difficulty"
-    ]
-    containers = [g]
-    for ck in ["tournament", "tournamentInfo", "tournament_info", "meta", "info"]:
-        sub = g.get(ck)
-        if isinstance(sub, dict):
-            containers.append(sub)
-
-    for c in containers:
-        for k in direct_keys:
-            if k in c:
-                v = _parse_float_val(c.get(k))
-                if v is not None and 0.5 <= v <= 10.5:
-                    return round(v, 2)
-
-    text_keys = ["description", "comment", "notes", "announcement", "subtitle", "name", "title"]
-    patterns = [
-        r"(?:заявленн[а-я]*\s+)?(?:сложност[ьи]|dl|дл)\s*[:=—–-]?\s*([1-9](?:[.,]\d)?)",
-        r"\b(?:dl|дл)\s*[~≈]?\s*([1-9](?:[.,]\d)?)",
-        r"сложност[ьи]\s+([1-9](?:[.,]\d)?)"
-    ]
-    for c in containers:
-        for tk in text_keys:
-            txt_val = c.get(tk)
-            if isinstance(txt_val, str) and txt_val.strip():
-                low = txt_val.lower()
-                for pat in patterns:
-                    m = re.search(pat, low, flags=re.IGNORECASE)
-                    if m:
-                        v = _parse_float_val(m.group(1))
-                        if v is not None and 0.5 <= v <= 10.5:
-                            return round(v, 2)
-    return None
-
-
 def main():
     if not os.path.exists(INPUT_JSON):
         print(f"Ошибка: файл '{INPUT_JSON}' не найден в текущей папке.")
@@ -1431,11 +1287,9 @@ def main():
                     if full:
                         editors.append(full)
         slim_games.append({
-            "date": str(g.get("dateEnd") or g.get("dateStart") or "")[:10],
             "taken": g.get("taken", 0),
             "totalQuestions": g.get("totalQuestions", 36),
             "trueDL": g.get("trueDL"),
-            "declaredDL": _extract_declared_dl(g),
             "fieldAvg": g.get("fieldAvg", 0),
             "editors": editors,
             "members": [{"id": m.get("id"), "name": m.get("name", "")} for m in (g.get("members") or []) if m.get("id")]
