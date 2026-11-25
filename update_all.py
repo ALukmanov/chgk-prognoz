@@ -131,9 +131,10 @@ def build_game_record(tid, team_id, player_names_fallback, is_overlap=False):
                 "name": full_name or player_names_fallback.get(pid, f"Игрок {pid}")
             })
 
-    true_dl = t_info.get("trueDL")
-    if true_dl is None:
-        true_dl = t_info.get("difficultyForecast")
+    raw_true_dl = t_info.get("trueDL")
+    raw_forecast_dl = t_info.get("difficultyForecast")
+    true_dl = raw_true_dl if raw_true_dl is not None else raw_forecast_dl
+    dl_is_forecast = (raw_true_dl is None and raw_forecast_dl is not None)
 
     date_end = str(t_info.get("dateEnd") or t_info.get("dateStart") or "")[:10]
     field_avg = round(sum(all_taken) / len(all_taken), 2) if all_taken else 0
@@ -148,6 +149,8 @@ def build_game_record(tid, team_id, player_names_fallback, is_overlap=False):
         "fieldAvg": field_avg,
         "mask": mask,
         "trueDL": float(true_dl) if true_dl is not None else None,
+        "declaredDL": float(raw_forecast_dl) if raw_forecast_dl is not None else None,
+        "dlIsForecast": dl_is_forecast,
         "editors": extract_editors_from_info(t_info, tid=tid),
         "members": members
     }
@@ -251,7 +254,7 @@ def main():
         if tid is None:
             continue
         date_str = str(g.get("dateEnd") or "")[:10]
-        needs_dl = (g.get("trueDL") is None) or (date_str >= cutoff_date)
+        needs_dl = (g.get("trueDL") is None) or bool(g.get("dlIsForecast")) or (date_str >= cutoff_date)
         needs_ed = not g.get("editors")
         if not (needs_dl or needs_ed):
             continue
@@ -259,9 +262,16 @@ def main():
         info = fetch_json(f"https://api.rating.chgk.info/tournaments/{tid}")
         if isinstance(info, dict):
             if needs_dl:
-                new_dl = info.get("trueDL")
-                if new_dl is not None:
-                    g["trueDL"] = float(new_dl)
+                new_true_dl = info.get("trueDL")
+                new_forecast_dl = info.get("difficultyForecast")
+                if new_forecast_dl is not None:
+                    g["declaredDL"] = float(new_forecast_dl)
+                if new_true_dl is not None:
+                    g["trueDL"] = float(new_true_dl)
+                    g["dlIsForecast"] = False
+                elif new_forecast_dl is not None and g.get("trueDL") is None:
+                    g["trueDL"] = float(new_forecast_dl)
+                    g["dlIsForecast"] = True
             if needs_ed:
                 eds = extract_editors_from_info(info, tid=tid)
                 if eds:

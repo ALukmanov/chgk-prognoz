@@ -1,0 +1,33 @@
+name: Автообновление прогноза ЧГК
+
+on:
+  schedule:
+    # Каждый вторник в 09:00 UTC (12:00 по Москве)
+    - cron: "0 9 * * 2"
+  workflow_dispatch: # Позволяет запустить обновление вручную кнопкой с телефона
+
+permissions:
+  contents: write
+
+jobs:
+  update-forecast:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Скачиваем файлы репозитория
+        uses: actions/checkout@v4
+
+      - name: Настраиваем Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Обновляем базу игр и пересобираем index.html
+        run: python update_all.py
+
+      - name: Сохраняем обновлённые файлы в репозиторий
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add chgk_full_analytics.json index.html
+          git diff --staged --quiet || git commit -m "Автообновление базы игр и прогноза"
+          git push
